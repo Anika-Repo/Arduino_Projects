@@ -1,2 +1,2 @@
 # Arduino_Projects
-Arduino projects =, with code, circuits, and explanations
+Arduino projects, with components, circuits, code, and descriptions.
