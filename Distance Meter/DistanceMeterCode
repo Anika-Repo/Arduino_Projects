@@ -1,0 +1,355 @@
+//-------------------------------------------
+// Adding Libraries
+//-------------------------------------------
+#include <LiquidCrystal_I2C.h>
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+
+#include <LoadingAnimation.h>
+
+
+//-------------------------------------------
+// Adding Variables
+//-------------------------------------------
+const int trigPin=9;
+const int echoPin=8;
+const int swL=4;
+const int swR=5;
+const int ledG=7, ledR=6;
+const int buzz=12;
+
+
+int screen=1;
+float l=0, w=0;
+
+float multiplier=1.0;
+String unit= "cm";
+float perUnitCost= 10;
+
+// Pixel data of Square symbol
+byte Sqr[] = {
+  B00110,
+  B00001,
+  B00010,
+  B00111,
+  B00000,
+  B00000,
+  B00000,
+  B00000
+};
+
+// Pixel data of Tick symbol
+byte Tick[] = {
+  B00000,
+  B00001,
+  B00011,
+  B10110,
+  B11100,
+  B01000,
+  B00000,
+  B00000
+};
+
+
+//-------------------------------------------
+// setup funcion: Run Once
+//-------------------------------------------
+void setup()
+{
+ pinMode(swL, INPUT);
+ pinMode(swR, INPUT);
+
+ pinMode(trigPin, OUTPUT);
+ pinMode(echoPin, INPUT);
+
+ pinMode(ledG, OUTPUT);
+ pinMode(ledR, OUTPUT);
+
+ pinMode(buzz, OUTPUT);
+
+ lcd.init();
+ lcd.backlight();
+ 
+  bootTone();
+  bootAnimation();
+
+ lcd.createChar(0, Sqr);
+ lcd.createChar(1, Tick);
+}
+void screenError()
+
+{
+
+  lcd.clear();
+
+  lcd.setCursor(0,0);
+
+  lcd.print("error reading !!!");
+
+  digitalWrite(ledR,0);
+
+  delay(400);
+
+  digitalWrite(ledR,1);
+
+}
+
+
+//-------------------------------------------
+// main loop: Runs Forever
+//-------------------------------------------
+void loop()
+{
+  while (getDistance()<3 || getDistance()>300)
+
+      {
+
+        screenError();
+
+      }
+
+
+ // Show a particular screen
+ switch (screen)
+ {
+   case 1:
+     screen1();
+     break;
+    
+   case 2:
+     screen2();
+     break;
+
+   case 3:
+     screen3();
+     break;
+   case 4:
+
+     screen4();
+
+     break;
+ }
+
+ // Right Button: Changes the screen 
+ if (digitalRead(swR)==HIGH)
+ {
+   if (screen==4)
+     screen=1;
+   else
+     screen++;
+    lcd.clear();
+    delay(400);
+   beep();
+ }
+ 
+ // Left Button: Changes the unit 
+ if (digitalRead(swL)==HIGH)
+ {
+   if (screen==1)
+     changeUnit();
+
+   else if (screen==2 || screen==3)
+   {
+     if (l==0)
+      l= getDistance();
+     else if (w==0)
+      w= getDistance();
+
+ recording();
+ dataSaved();
+   }
+  delay(400);
+   beep(); 
+ }
+}
+
+
+//-------------------------------------------
+// screen1: Unit Selection
+//-------------------------------------------
+void screen1()
+{
+ lcd.setCursor(0,0);
+ lcd.print("Select Unit: ");
+ lcd.setCursor(0,1);
+ lcd.print(unit);
+}
+
+//-------------------------------------------
+// screen2: Live Distance
+//-------------------------------------------
+void screen2()
+{
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("Live Distance:");
+ lcd.setCursor(0,1);
+ lcd.print(getDistance()*multiplier);
+ lcd.print(unit);
+ delay(500);
+}
+
+//-------------------------------------------
+// screen3: Recorded Length & Width
+//-------------------------------------------
+void screen3()
+{
+ lcd.setCursor(0,0);
+ lcd.print("Length: ");
+ lcd.print(l*multiplier);
+ lcd.print(unit);
+
+ lcd.setCursor(0,1);
+ lcd.print("Width: ");
+ lcd.print(w*multiplier);
+ lcd.print(unit);
+}
+
+//-------------------------------------------
+// screen4: Area & Cost
+//-------------------------------------------
+void screen4()
+{
+ float area=(l*multiplier)*(w*multiplier);
+
+ lcd.setCursor(0,0);
+ lcd.print("Area: ");
+ lcd.print(area);
+ lcd.print(unit);
+ lcd.write(0); 
+
+ lcd.setCursor(0,1);
+ lcd.print("Cost: $");
+ lcd.print(l*w*perUnitCost);
+}
+
+//-------------------------------------------
+// Recording animation
+//-------------------------------------------
+void recording()
+{
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("Recording");
+ for (int j=0; j<4; j++)
+ {
+  delay(500);
+  lcd.print(".");
+ }
+}
+
+//-------------------------------------------
+// Confirmation screen 
+//-------------------------------------------
+void dataSaved()
+{
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("Data Saved ");
+ lcd.write(1);
+ lcd.setCursor(0,1);
+ lcd.print(getDistance());
+ lcd.print(unit);
+ delay(2000);
+}
+
+
+
+
+//-------------------------------------------
+// Function to calculate distance
+//-------------------------------------------
+float getDistance()
+{
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+unsigned long duration= pulseIn(echoPin, HIGH);
+float distance = (duration*0.0343)/2;
+return (distance);
+}
+
+
+
+
+//-------------------------------------------
+// Function to change units
+//-------------------------------------------
+void changeUnit()
+{
+ if (unit=="cm")
+ {
+   unit= "in";
+   multiplier= 1/2.54;
+ }
+
+ else if (unit=="in")
+ {
+   unit= "ft";
+   multiplier= 1/30.48;
+ }
+
+ else if (unit=="ft")
+ {
+   unit= "cm";
+   multiplier= 1.0;
+ }
+}
+
+
+//-------------------------------------------
+// Function to play melody on boot
+//-------------------------------------------
+void bootTone()
+{
+ digitalWrite(ledR, 0);
+ digitalWrite(ledG, 1);
+ tone(buzz, 1000, 200);
+ delay(250);
+
+ digitalWrite(ledR, 1);
+ digitalWrite(ledG, 0);
+ tone(buzz, 1500, 200);
+ delay(250);
+
+ digitalWrite(ledR, 0);
+ digitalWrite(ledG, 1);
+ tone(buzz, 2000, 200);
+ delay(250);
+
+ digitalWrite(ledR, 1);
+ digitalWrite(ledG, 1);
+ noTone(buzz);
+}
+
+
+//-------------------------------------------
+// Function to show loading screen
+//-------------------------------------------
+void bootAnimation()
+{
+ lcd.clear();
+ lcd.setCursor(0,0);
+ lcd.print("Initializing...");
+ lcd.setCursor(0,1);
+ showLoadingBar(lcd, 0, 1, 16, 100);
+ lcd.clear();
+}
+
+
+
+//-------------------------------------------
+// Button press feedback with debounce delay
+//-------------------------------------------
+void beep()
+{
+ tone(buzz, 1600, 200);
+ delay(400);
+ lcd.clear();
+}
+
+
+
+
+
+
